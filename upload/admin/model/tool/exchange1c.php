@@ -294,6 +294,9 @@ class ModelToolExchange1c extends Model {
 
 		// Товары
 		if ($xml->Каталог->Товары->Товар) {
+
+			$option_desc = '';
+
 			foreach ($xml->Каталог->Товары->Товар as $product) {
 
 				$uuid = explode('#', (string)$product->Ид);
@@ -315,8 +318,26 @@ class ModelToolExchange1c extends Model {
 					}
 				}
 
+				if($product->ХарактеристикиТовара){
+
+					$count_options = count($product->ХарактеристикиТовара->ХарактеристикаТовара);
+
+					foreach($product->ХарактеристикиТовара->ХарактеристикаТовара as $option ) {
+						$option_desc .= (string)$option->Наименование . ': ' . (string)$option->Значение . ';';
+					}
+					$option_desc .= ";\n";
+
+				}
+
 				if ($product->Группы) $data['category_1c_id'] = (string)$product->Группы->Ид;
-				if ($product->Описание) $data['description'] = (string)$product->Описание;
+
+				if ($product->Описание){
+					$data['description'] = (string)$option_desc . (string)$product->Описание;
+				}
+				else {
+					$data['description'] = (string)$option_desc;
+				}
+
 				if ($product->Статус) $data['status'] = (string)$product->Статус;
 
 				// Свойства продукта
