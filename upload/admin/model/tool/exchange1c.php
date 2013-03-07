@@ -25,9 +25,7 @@ class ModelToolExchange1c extends Model {
 		if ($query->num_rows) {
 
 			foreach ($query->rows as $orders_data) {
-			
 				$order = $this->model_sale_order->getOrder($orders_data['order_id']);
-				
 				$date = date('Y-m-d', strtotime($order['date_added']));
 				$time = date('H:i:s', strtotime($order['date_added']));
 
@@ -51,7 +49,6 @@ class ModelToolExchange1c extends Model {
 					,'ПолноеНаименование'	=> $order['payment_lastname'] . ' ' . $order['payment_firstname']
 					,'Фамилия'				=> $order['payment_lastname']
 					,'Имя'					=> $order['payment_firstname']
-					
 					,'Адрес' 	=> array(
 						'Представление'	=> $order['shipping_address_1'].', '.$order['shipping_city'].', '.$order['shipping_postcode'].', '.$order['shipping_country']
 					)
@@ -133,17 +130,17 @@ class ModelToolExchange1c extends Model {
 		$data = array();
 		$price_types = array();
 		$data['price'] = 0;
-		
+
 		if ($xml->ПакетПредложений->ТипыЦен->ТипЦены) {
 			foreach ($xml->ПакетПредложений->ТипыЦен->ТипЦены as $type) {
 				$price_types[(string)$type->Ид] = (string)$type->Наименование;
 			}
 		}
-		
+
 		if (!empty($config_price_type) && count($config_price_type) > 0) {
 			$config_price_type_main = array_shift($config_price_type);
 		}
-		
+
 		// Инициализация массива скидок для оптимизации алгоритма
 		if (!empty($config_price_type) && count($config_price_type) > 0) {
 			$discount_price_type = array();
@@ -179,7 +176,7 @@ class ModelToolExchange1c extends Model {
 							}
 						}
 					}
-					
+
 					// Вторая цена и тд - $discount_price_type
 					if (!empty($discount_price_type) && $offer->Цены->Цена->ИдТипаЦены) {
 						foreach ($offer->Цены->Цена as $price) {
@@ -203,45 +200,6 @@ class ModelToolExchange1c extends Model {
 				//Количество
 				$data['quantity'] = $offer->Количество ? (int)$offer->Количество : 0 ;
 
-				/*
-				if($offer->ХарактеристикиТовара){
-					//Заполняем массив с Атрибутами данными по умолчанию
-					$product_option_value_description_data[1] = array('name' => '');
-					$product_option_value_data[0] = array(
-						'language'				=> $product_option_value_description_data,
-						'quantity'				=> isset($data['quantity']) ? $data['quantity']:0,
-						'subtract'				=> 1,
-						// Пока записываем полную цену продукта с данной характеристикой, потом будем считать разницу цен.
-						'price'				   => isset($data['price']) ? $data['price']:10 ,
-						'prefix'				  => '+',
-						'sort_order'			  => isset($offer->ХарактеристикиТовара->Сортировка) ? (int)$offer->ХарактеристикиТовара->Сортировка : 0
-					);
-
-					//Если характеристика одна, то незачем объединять их и потому название и значения запишем как надо
-
-					$count_options = count($offer->ХарактеристикиТовара->ХарактеристикаТовара);
-
-					$data['product_option'][0] = array(
-						//Название Атрибута
-						'language'			 => array( 1 => array( 'name' => ($count_options == 1 ) ? (string)$offer->ХарактеристикиТовара->ХарактеристикаТовара->Наименование : 'Варианты')),
-						'product_option_value' => $product_option_value_data,
-						'sort_order'		   => 0
-					);
-
-					//Считываем характеристики и объединяем, если их больше 1-й
-					if($count_options == 1){
-						$data['product_option'][0]['product_option_value'][0]['language'][1]['name'] = (string)$offer->ХарактеристикиТовара->ХарактеристикаТовара->Значение;
-					}
-					else {
-						foreach($offer->ХарактеристикиТовара->ХарактеристикаТовара as $option ){
-							$data['product_option'][0]['product_option_value'][0]['language'][1]['name'].= (string)$option->Наименование. ': '. (string)$option->Значение.' ';
-					}}
-
-					//Если 1С выгружает значение СортировкаХарактеристики, то считываем его, если нет, то топаем дальше и этот код никому не мешает.
-					if($offer->ХарактеристикиТовара->СортировкаХарактеристики) $data['product_option'][0]['product_option_value'][0]['sort_order'] = (int)$offer->ХарактеристикиТовара->СортировкаХарактеристики;
-				}
-				*/
-
 				if ($offer->СкидкиНаценки) {
 					$value = array();
 					foreach ($offer->СкидкиНаценки->СкидкаНаценка as $discount) {
@@ -259,11 +217,11 @@ class ModelToolExchange1c extends Model {
 						if ($discount->ЗначениеУсловия) {
 							$value['quantity'] = (int)$discount->ЗначениеУсловия;
 						}
-						
+
 						unset($value);
 					}
 				}
-			   	
+
 				$data['status'] = 1;
 				$this->updateProduct($data);
 				unset($data);
@@ -277,13 +235,24 @@ class ModelToolExchange1c extends Model {
 	/**
 	 * Парсит товары и категории
 	 */
-	public function parseImport($filename) {		
+	public function parseImport($filename) {
 
 		$importFile = DIR_CACHE . 'exchange1c/' . $filename;
 
 		$xml = simplexml_load_file($importFile);
 		$data = array();
-		
+		$options = array();
+		$options_desc = array();
+		$fh = fopen("debug.txt", "a+");
+
+		$query = $this->db->query("SELECT name, option_id FROM `" . DB_PREFIX . "option_description`");
+
+		if ($query->num_rows) {
+			foreach ($query->rows as $options_data) {
+				$options_desc[$options_data["option_id"]] = $options_data["name"];
+			}
+		}
+
 		// Группы
 		if($xml->Классификатор->Группы) $this->insertCategory($xml->Классификатор->Группы->Группа);
 
@@ -291,7 +260,7 @@ class ModelToolExchange1c extends Model {
 		if ($xml->Классификатор->Свойства) $this->insertAttribute($xml->Классификатор->Свойства->Свойство);
 
 		$this->load->model('catalog/manufacturer');
-
+        fputs ($fh, 'parseImport');
 		// Товары
 		if ($xml->Каталог->Товары->Товар) {
 
@@ -318,25 +287,61 @@ class ModelToolExchange1c extends Model {
 					}
 				}
 
+/*
+			<Товар>
+				<Ид>1fce42a7-5c19-11e2-a94f-000b6b6423e4#bcc438f1-7f44-11e2-a3b8-0003ff015853</Ид>
+				<Артикул>911-5 25</Артикул>
+				<Наименование>Иглу сер-милитарий р. 25</Наименование>
+				<БазоваяЕдиница Код="796" НаименованиеПолное="Штука" МеждународноеСокращение="PCE">шт</БазоваяЕдиница>
+				<Группы>
+					<Ид>1fce429e-5c19-11e2-a94f-000b6b6423e4</Ид>
+				</Группы>
+				<Картинка/>
+				<ХарактеристикиТовара>
+					<ХарактеристикаТовара>
+						<Наименование>Размер</Наименование>
+						<Значение>22</Значение>
+					</ХарактеристикаТовара>
+				</ХарактеристикиТовара>
+				<ЗначенияРеквизитов>
+					<ЗначениеРеквизита>
+						<Наименование>ВидНоменклатуры</Наименование>
+						<Значение>Обувь</Значение>
+					</ЗначениеРеквизита>
+					<ЗначениеРеквизита>
+						<Наименование>ТипНоменклатуры</Наименование>
+						<Значение>Товар</Значение>
+					</ЗначениеРеквизита>
+					<ЗначениеРеквизита>
+						<Наименование>Полное наименование</Наименование>
+						<Значение>Иглу сер-милитарий р. 25</Значение>
+					</ЗначениеРеквизита>
+					<ЗначениеРеквизита>
+						<Наименование>Вес</Наименование>
+						<Значение>0</Значение>
+					</ЗначениеРеквизита>
+				</ЗначенияРеквизитов>
+			</Товар>
+*/
+
 				if($product->ХарактеристикиТовара){
 
-					$count_options = count($product->ХарактеристикиТовара->ХарактеристикаТовара);
+					foreach($product->ХарактеристикиТовара->ХарактеристикаТовара as $option ){
 
-					foreach($product->ХарактеристикиТовара->ХарактеристикаТовара as $option ) {
-						$option_desc .= (string)$option->Наименование . ': ' . (string)$option->Значение . ';';
+						$id = array_search((string)$option->Наименование, $options_desc);
+
+						if ($id === false){
+							$id = '-1';
+						}
+
+                        $options[(string)$option->Наименование][(string)$option->Значение] = -1;
+                        $options[(string)$option->Наименование]['id'] = $id;
 					}
-					$option_desc .= ";\n";
-
 				}
 
 				if ($product->Группы) $data['category_1c_id'] = (string)$product->Группы->Ид;
 
-				if ($product->Описание){
-					$data['description'] = (string)$option_desc . (string)$product->Описание;
-				}
-				else {
-					$data['description'] = (string)$option_desc;
-				}
+				if ($product->Описание) $data['description'] = (string)$product->Описание;
 
 				if ($product->Статус) $data['status'] = (string)$product->Статус;
 
@@ -358,11 +363,11 @@ class ModelToolExchange1c extends Model {
 							}
 
 							switch ($attribute['name']) {
-			
+
 								case 'Производитель':
 									$manufacturer_name = $attribute_value;
 									$query = $this->db->query("SELECT manufacturer_id FROM ". DB_PREFIX ."manufacturer WHERE name='". $manufacturer_name ."'");
-									
+
 									if ($query->num_rows) {
 										$data['manufacturer_id'] = $query->row['manufacturer_id'];
 									}
@@ -373,7 +378,7 @@ class ModelToolExchange1c extends Model {
 											'sort_order' 		 => 0,
 											'manufacturer_store' => array(0 => 0)
 										);
-										
+
 										$data_manufacturer['manufacturer_description'] = array(
 											1 => array(
 												'meta_keyword' 		=> '',
@@ -388,19 +393,19 @@ class ModelToolExchange1c extends Model {
 										$data['manufacturer_id'] = $manufacturer_id;
 									}
 								break;
-								
+
 								case 'oc.seo_h1':
 									$data['seo_h1'] = $attribute_value;
 								break;
-								
+
 								case 'oc.seo_title':
 									$data['seo_title'] = $attribute_value;
 								break;
-								
+
 								case 'oc.sort_order':
 									$data['sort_order'] = $attribute_value;
 								break;
-									
+
 								default:
 									$data['product_attribute'][] = array(
 										'attribute_id' 					=> $attribute['id'],
@@ -410,8 +415,6 @@ class ModelToolExchange1c extends Model {
 											)
 										)
 									);
-									
-										
 							}
 						}
 					}
@@ -424,7 +427,7 @@ class ModelToolExchange1c extends Model {
 							case 'Вес':
 								$data['weight'] = $requisite->Значение ? (float)$requisite->Значение : 0;
 							break;
-							
+
 							case 'ОписаниеВФорматеHTML':
 								$data['description'] = $requisite->Значение ? (string)$requisite->Значение : '';
 							break;
@@ -433,10 +436,13 @@ class ModelToolExchange1c extends Model {
 				}
 
 				$this->setProduct($data);
+
 				unset($data);
 			}
 		}
 
+        $this->insertOptions($options, $fh);
+		fclose ($fh);
 		unset($xml);
 	}
 
@@ -450,7 +456,7 @@ class ModelToolExchange1c extends Model {
 	 * @return 	array
 	 */
 	private function initCategory($category, $parent, $data = array()){
-		
+
 		$result = array(
 			 'status' 		=> isset($data['status']) ? $data['status'] : 1
 			,'top'			=> isset($data['top']) ? $data['top'] : 1
@@ -475,7 +481,6 @@ class ModelToolExchange1c extends Model {
 
 		return $result;
 	}
-
 
 	/**
 	 * Функция добавляет корневую категорию и всех детей
@@ -518,8 +523,8 @@ class ModelToolExchange1c extends Model {
 
 		unset($xml);
 	}
-	
-	
+
+
 	/**
 	 * Создает атрибуты из свойств
 	 *
@@ -531,7 +536,7 @@ class ModelToolExchange1c extends Model {
 
 
 		$attribute_group = $this->model_catalog_attribute_group->getAttributeGroup(1);
-		
+
 		if (!$attribute_group) {
 
 			$attribute_group_description[1] = array (
@@ -545,12 +550,12 @@ class ModelToolExchange1c extends Model {
 
 			$this->model_catalog_attribute_group->addAttributeGroup($data);
 		}
-		
+
 		foreach ($xml as $attribute) {
 			$id 	= (string)$attribute->Ид;
 			$name	= (string)$attribute->Наименование;
 			$values = array();
-			
+
 			if ((string)$attribute->ВариантыЗначений) {
 				if ((string)$attribute->ТипЗначений == 'Справочник') {
 					foreach($attribute->ВариантыЗначений->Справочник as $option_value){
@@ -566,9 +571,8 @@ class ModelToolExchange1c extends Model {
 				'attribute_group_id'	=>	1,
 				'sort_order'			=> 	0,
 			);
-			
+
 			$data['attribute_description'][1]['name'] = (string)$name;
-			
 			// Если атрибут уже был добавлен, то возвращаем старый id, если атрибута нет, то создаем его и возвращаем его id
 			$current_attribute = $this->db->query('SELECT attribute_id FROM ' . DB_PREFIX . 'attribute_to_1c WHERE 1c_attribute_id = "' . $id . '"');
 			if (!$current_attribute->num_rows) {
@@ -585,10 +589,54 @@ class ModelToolExchange1c extends Model {
 				'name'   => $name,
 				'values' => $values
 			);
-			
-		}	
-		
+		}
+
 		unset($xml);
+	}
+
+	/**
+	 * Создает опции из характеристик
+	 *
+	 * @param   array
+	 */
+	private function insertOptions($options, $fh) {
+
+        $this->load->model('catalog/option');
+
+		$data = array();
+
+        $language_id = $this->config->get('config_language_id');
+
+		foreach ($options as $opt_key => $option_value) {
+			$option_data[$language_id] = array('name' => $opt_key);
+
+			$data['option_description'] = $option_data;
+			$data['type'] = 'select';
+			$data['sort_order'] = 0;
+			$data['option_value'] = array();
+
+			$j = 0;
+
+			foreach($option_value as $value => $val_id) {
+				if ($value != 'id'){
+					$data['option_value'][$j] = array('option_value_id' => '',
+													  'image' => '',
+													  'option_value_description' => array(),
+													  'sort_order' => '');
+
+					$data['option_value'][$j]['option_value_description'][$language_id] = array('name' => $value);
+					$j++;
+				}
+			}
+			$this->model_catalog_option->addOption($data);
+			fputs ($fh, " ===== === ====\n");
+			fputs ($fh, print_r($data, true));
+			fputs ($fh, " ------- ------ \n");
+        }
+
+
+		fputs ($fh, print_r($options, true));
+
 	}
 
 
