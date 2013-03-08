@@ -331,7 +331,7 @@ class ModelToolExchange1c extends Model {
 						$id = array_search((string)$option->Наименование, $options_desc);
 
 						if ($id === false){
-							$id = '-1';
+							$id = -1;
 						}
 
                         $options[(string)$option->Наименование][(string)$option->Значение] = -1;
@@ -601,11 +601,11 @@ class ModelToolExchange1c extends Model {
 	 */
 	private function insertOptions($options, $fh) {
 
-        $this->load->model('catalog/option');
+		$this->load->model('catalog/option');
 
 		$data = array();
 
-        $language_id = $this->config->get('config_language_id');
+		$language_id = $this->config->get('config_language_id');
 
 		foreach ($options as $opt_key => $option_value) {
 			$option_data[$language_id] = array('name' => $opt_key);
@@ -628,13 +628,15 @@ class ModelToolExchange1c extends Model {
 					$j++;
 				}
 			}
-			$this->model_catalog_option->addOption($data);
+			if ($option_value['id'] === -1)
+				$this->model_catalog_option->addOption($data);
+			else
+				$this->model_catalog_option->editOption((int)$option_value['id'], $data);
 			fputs ($fh, " ===== === ====\n");
 			fputs ($fh, print_r($data, true));
 			fputs ($fh, " ------- ------ \n");
-        }
-
-
+			fputs ($fh, "option_value['id'] ==" . $option_value['id'] . " \n");
+		}
 		fputs ($fh, print_r($options, true));
 
 	}
