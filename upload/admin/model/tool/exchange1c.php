@@ -243,15 +243,26 @@ class ModelToolExchange1c extends Model {
 		$data = array();
 		$options = array();
 		$options_desc = array();
-		$fh = fopen("debug.txt", "a+");
+//		$fh = fopen("debug.txt", "a+");
 
-		$query = $this->db->query("SELECT name, option_id FROM `" . DB_PREFIX . "option_description`");
+		$cur_option = $this->db->query("SELECT name, option_id FROM `" . DB_PREFIX . "option_description`");
 
-		if ($query->num_rows) {
-			foreach ($query->rows as $options_data) {
-				$options_desc[$options_data["option_id"]] = $options_data["name"];
+		if ($cur_option->num_rows) {
+			foreach ($cur_option->rows as $options_data){
+				$option_id = $options_data["option_id"];
+				$cur_values = $this->db->query("SELECT name, option_value_id FROM `" . DB_PREFIX . "option_value_description` WHERE option_id = '" . (int)$option_id . "'");
+				$options[(string)$options_data["name"]]['id'] = $option_id;
+				if ($cur_values->num_rows){
+					foreach ($cur_values->rows as $value_data){
+						$options[(string)$options_data["name"]][(string)$value_data["name"]] = $value_data["option_value_id"];
+					}
+				}
+				$options_desc[$option_id] = $options_data["name"];
 			}
 		}
+//  		fputs ($fh, " =   options    =\n");
+//		fputs ($fh, print_r($options, true));
+//		fputs ($fh, " -              - \n");
 
 		// Группы
 		if($xml->Классификатор->Группы) $this->insertCategory($xml->Классификатор->Группы->Группа);
@@ -260,7 +271,7 @@ class ModelToolExchange1c extends Model {
 		if ($xml->Классификатор->Свойства) $this->insertAttribute($xml->Классификатор->Свойства->Свойство);
 
 		$this->load->model('catalog/manufacturer');
-        fputs ($fh, 'parseImport');
+//        fputs ($fh, 'parseImport');
 		// Товары
 		if ($xml->Каталог->Товары->Товар) {
 
@@ -435,14 +446,14 @@ class ModelToolExchange1c extends Model {
 					}
 				}
 
+		        $this->insertOptions($options);
 				$this->setProduct($data);
 
 				unset($data);
 			}
 		}
 
-        $this->insertOptions($options, $fh);
-		fclose ($fh);
+//		fclose ($fh);
 		unset($xml);
 	}
 
@@ -599,13 +610,15 @@ class ModelToolExchange1c extends Model {
 	 *
 	 * @param   array
 	 */
-	private function insertOptions($options, $fh) {
+	private function insertOptions($options) {
 
 		$this->load->model('catalog/option');
 
 		$data = array();
 
 		$language_id = $this->config->get('config_language_id');
+
+
 
 		foreach ($options as $opt_key => $option_value) {
 			$option_data[$language_id] = array('name' => $opt_key);
@@ -619,7 +632,17 @@ class ModelToolExchange1c extends Model {
 
 			foreach($option_value as $value => $val_id) {
 				if ($value != 'id'){
-					$data['option_value'][$j] = array('option_value_id' => '',
+
+					$option_value_id = '';
+
+					if ($option_value['id'] != -1){
+						$current_option_value = $this->db->query('SELECT option_value_id FROM ' . DB_PREFIX . 'option_value_description WHERE option_id = "' . $option_value['id'] . '" and name = "' . $value .'"');
+						if ($current_option_value->num_rows) {
+							$value_data = $current_option_value->row;
+							$option_value_id = $value_data['option_value_id'];
+						}
+					}
+					$data['option_value'][$j] = array('option_value_id' => $option_value_id,
 													  'image' => '',
 													  'option_value_description' => array(),
 													  'sort_order' => '');
@@ -632,12 +655,12 @@ class ModelToolExchange1c extends Model {
 				$this->model_catalog_option->addOption($data);
 			else
 				$this->model_catalog_option->editOption((int)$option_value['id'], $data);
-			fputs ($fh, " ===== === ====\n");
-			fputs ($fh, print_r($data, true));
-			fputs ($fh, " ------- ------ \n");
-			fputs ($fh, "option_value['id'] ==" . $option_value['id'] . " \n");
+//			fputs ($fh, " ===== === ====\n");
+//			fputs ($fh, print_r($data, true));
+//			fputs ($fh, " ------- ------ \n");
+//			fputs ($fh, "option_value['id'] ==" . $option_value['id'] . " \n");
 		}
-		fputs ($fh, print_r($options, true));
+		//fputs ($fh, print_r($options, true));
 
 	}
 
