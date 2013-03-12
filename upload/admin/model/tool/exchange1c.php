@@ -282,7 +282,7 @@ class ModelToolExchange1c extends Model {
 						);
 						
 						$data['product_option'] = $product_option_data;
-						//file_put_contents('/home/radugasp/avantico.ru/afashion/new/log.php', $this->format($data['product_option'])."\n\n", FILE_APPEND);
+						//file_put_contents('log.php', $this->format($data['product_option'])."\n\n", FILE_APPEND);
 					}
 					
 				}
