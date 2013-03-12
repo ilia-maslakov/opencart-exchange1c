@@ -993,7 +993,6 @@ class ModelToolExchange1c extends Model {
 			$this->db->query('TRUNCATE TABLE ' . DB_PREFIX . 'product_to_store');
 			$this->db->query('TRUNCATE TABLE ' . DB_PREFIX . 'option_value_description');
 			$this->db->query('TRUNCATE TABLE ' . DB_PREFIX . 'option_value');
-			$this->db->query('TRUNCATE TABLE ' . DB_PREFIX . 'option_description');
 			$this->db->query('DELETE FROM ' . DB_PREFIX . 'url_alias WHERE query LIKE "%product_id=%"');
 		}
 
