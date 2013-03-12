@@ -266,7 +266,7 @@ class ModelToolExchange1c extends Model {
 							'option_value_id'         => (int) $option_value_id,
 							'quantity'                => $data['quantity'],
 							'subtract'                => 0,
-							'price'                   => $data['price'],
+							'price'                   => empty($data['price']) ? 0 : (int)$data['price'],
 							'price_prefix'            => '+',
 							'points'                  => 0,
 							'points_prefix'           => '+',						
@@ -282,7 +282,7 @@ class ModelToolExchange1c extends Model {
 						);
 						
 						$data['product_option'] = $product_option_data;
-						//file_put_contents('log.php', $this->format($data['product_option'])."\n\n", FILE_APPEND);
+						//file_put_contents('/home/radugasp/avantico.ru/afashion/new/log.php', $this->format($data['product_option'])."\n\n", FILE_APPEND);
 					}
 					
 				}
@@ -769,7 +769,7 @@ class ModelToolExchange1c extends Model {
 		
 		
 		if(isset($product['product_option'])){
-			if(!empty($product['product_option'])){
+			if(!empty($product['product_option']) && isset($product['product_option'][0]['type'])){
 				$result['product_option'] = $product['product_option'];
 				if(!empty($data['product_option'])){
 					$result['product_option'][0]['product_option_value'] = array_merge($product['product_option'][0]['product_option_value'],$data['product_option'][0]['product_option_value']);
@@ -852,7 +852,7 @@ class ModelToolExchange1c extends Model {
 		
 		// Работаем с ценой на разные варианты товаров.
 		if(!empty($product['product_option'][0])){
-			if((float) $product_old['price'] > 0){
+			if(isset($product_old['price']) && (float) $product_old['price'] > 0){
 			
 			
 				$price = (float) $product_old['price'] - (float) $product['product_option'][0]['product_option_value'][0]['price'];
