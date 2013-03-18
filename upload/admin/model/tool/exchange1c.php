@@ -142,6 +142,8 @@ class ModelToolExchange1c extends Model {
 		$price_types = array();
 		$data['price'] = 0;
 		
+		$this->log->write("Начат разбор файла: " . $filename);
+
 		$this->load->model('catalog/option');
 		
 		if ($xml->ПакетПредложений->ТипыЦен->ТипЦены) {
@@ -179,6 +181,7 @@ class ModelToolExchange1c extends Model {
                 fputs ($fh, "uuid: ". $uuid[0] . ", product_id: " . $product_id ."\n");
                 fclose($fh);
 
+//                $this->log->write("Найдено предложение:" . $data['1c_id']);
 				//Цена за единицу
 				if ($offer->Цены) {
 
@@ -214,6 +217,8 @@ class ModelToolExchange1c extends Model {
 							}
 						}
 					}
+//				else {
+//	                $this->log->write("Не определена цена для предложения:" . $data['1c_id']);
 				}
 
 				//Количество
@@ -363,7 +368,7 @@ class ModelToolExchange1c extends Model {
 
 		$xml = simplexml_load_file($importFile);
 		$data = array();
-		
+		$this->log->write("Начат разбор файла: " . $filename );
 		// Группы
 		if($xml->Классификатор->Группы) $this->insertCategory($xml->Классификатор->Группы->Группа, 0, $language_id);
 
@@ -383,7 +388,7 @@ class ModelToolExchange1c extends Model {
 				$data['name'] = $product->Наименование? (string)$product->Наименование : 'не задано';
 				$data['weight'] = $product->Вес? (float)$product->Вес : 0;
 				$data['sku'] = $product->Артикул? (string)$product->Артикул : '';
-
+                $this->log->write("Найден товар:" . $data['name'] . " арт: " . $data['sku'] . "1C UUID: " . $data['1c_id']);
 				if ($product->Картинка) {
 					$data['image'] =(string)$product->Картинка[0];
 					unset($product->Картинка[0]);
@@ -509,6 +514,7 @@ class ModelToolExchange1c extends Model {
 		}
 
 		unset($xml);
+		$this->log->write("Окончен разбор файла: " . $filename );
 	}
 
 
@@ -562,7 +568,7 @@ class ModelToolExchange1c extends Model {
 
 			if (isset($category->Ид) && isset($category->Наименование) ){ 
 				$id =  (string)$category->Ид;
-
+                $this->log->write("Вставка категории: " . $category->Наименование . "[".$category->Ид."]");
 				$data = array();
 
 				$query = $this->db->query('SELECT * FROM `' . DB_PREFIX . 'category_to_1c` WHERE `1c_category_id` = "' . $this->db->escape($id) . '"');
@@ -621,7 +627,8 @@ class ModelToolExchange1c extends Model {
 			$id 	= (string)$attribute->Ид;
 			$name	= (string)$attribute->Наименование;
 			$values = array();
-			
+			$this->log->write("Вставка атрибутов: " . $attribute->Наименование . "[". $attribute->Ид ."]");
+
 			if ((string)$attribute->ВариантыЗначений) {
 				if ((string)$attribute->ТипЗначений == 'Справочник') {
 					foreach($attribute->ВариантыЗначений->Справочник as $option_value){
@@ -834,7 +841,7 @@ class ModelToolExchange1c extends Model {
 //        fputs ($fh, "data: ". print_r($data,true) . "\n");
         fclose($fh);
 
-		if ($product_id) {
+		if ($product_id !== false) {
 			$this->updateProduct($product, $product_id, $language_id);
     		$fh = fopen("setProduct.txt", "a+");
             fputs ($fh, "if product_id \n");
@@ -861,8 +868,8 @@ class ModelToolExchange1c extends Model {
 			else {
     			$this->load->model('catalog/product');
 
-				$this->model_catalog_product->addProduct($data);
-				$product_id = $this->getProductBySKU($data['sku']);
+				$product_id = $this->model_catalog_product->addProduct($data);
+              	//$product_id = $this->getProductBySKU($data['sku']);
         		$fh = fopen("setProduct.txt", "a+");
                 fputs ($fh, "Если нет, то создаем новый else \n");
                 fputs ($fh, "product_id: ". $product_id . "\n");
