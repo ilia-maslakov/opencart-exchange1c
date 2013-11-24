@@ -172,20 +172,25 @@ class ModelToolExchange1c extends Model {
 		if ($xml->ПакетПредложений->Предложения->Предложение) {
 			foreach ($xml->ПакетПредложений->Предложения->Предложение as $offer) {
 
+				if ($enable_log)
+					$this->log->write("Начат разбор предложений... Ид [" . $offer->Ид ."]");
 				//UUID без номера после #
 				$uuid = explode("#", $offer->Ид);
 				$data['1c_id'] = $uuid[0];
-				if ($enable_log)
-					$this->log->write("Товар: [UUID]:" . $data['1c_id']);
-
 				$product_id = $this->getProductIdBy1CProductId ($uuid[0]);
+				if ($enable_log)
+					$this->log->write("Товар: [UUID]:" . $data['1c_id'] ." (" . $product_id . ")");
 
 				//Цена за единицу
 				if ($offer->Цены) {
+					if ($enable_log)
+						$this->log->write("Обнаружены цены...");
 
 					// Первая цена по умолчанию - $config_price_type_main
 					if (!$config_price_type_main['keyword']) {
 						$data['price'] = (float)$offer->Цены->Цена->ЦенаЗаЕдиницу;
+						if ($enable_log)
+							$this->log->write("Цена по умолчанию: " . $data['price']);
 					}
 					else {
 						if ($offer->Цены->Цена->ИдТипаЦены) {
@@ -194,7 +199,6 @@ class ModelToolExchange1c extends Model {
 									$data['price'] = (float)$price->ЦенаЗаЕдиницу;
 									if ($enable_log)
 										$this->log->write(" найдена цена  > " . $data['price']);
-
 								}
 							}
 						}
@@ -213,6 +217,8 @@ class ModelToolExchange1c extends Model {
 									'date_start'    => '0000-00-00',
 									'date_end'      => '0000-00-00'
 								);
+								if ($enable_log)
+									$this->log->write(" найдена дополнительная цена  > " . $value['price']);
 								$data['product_discount'][] = $value;
 								unset($value);
 							}
@@ -222,6 +228,8 @@ class ModelToolExchange1c extends Model {
 
 				//Количество
 				$data['quantity'] = isset($offer->Количество) ? (int)$offer->Количество : 0;
+				if ($enable_log)
+					$this->log->write(" количество товара (" . $product_id . "): " . $data['quantity']);
 
 				//Характеристики
 				if ($offer->ХарактеристикиТовара) {
@@ -235,22 +243,29 @@ class ModelToolExchange1c extends Model {
 						$value_1c = (string)$opt->Значение;
 
 						if (!empty($name_1c) && !empty($value_1c)) {
-							if ($enable_log) $this->log->write(" Найдены характеристики: " . $name_1c . " -> " . $value_1c);
+							if ($enable_log)
+								$this->log->write(" Найдены характеристики (" . $product_id . "): " . $name_1c . " -> " . $value_1c);
 
 							$query = $this->db->query("SELECT option_id FROM ". DB_PREFIX ."option_description WHERE name='". $name_1c ."'");
 							
 							if ($query->num_rows > 0) {
 								$option_id = $query->row['option_id'];
+								if ($enable_log)
+									$this->log->write("  характеристика в БД под кодом: " . $option_id);
 							}
 							else {
 								//Нету такой опции
 								$option_id = $this->setOption($name_1c);
+								if ($enable_log)
+									$this->log->write("  добавлена характеристика [" . $name_1c . "] в БД под кодом: " . $option_id);
 							}
 					
 							//@TODO: Изменение на API OpenCart
 							//@TODO: Проверка существования OptionValue (полное соответствие) + Изменение на API OpenCart
 
-							$option_value_id = $this->setOptionValue($option_id,$value_1c);
+							$option_value_id = $this->setOptionValue($option_id, $value_1c);
+							if ($enable_log)
+								$this->log->write("  характеристика [" . $name_1c . "->" . $value_1c ."] в БД под кодом: " . $option_value_id);
 
 							//@TODO: Проверка существования OptionValue (полное соответствие) + Изменение на API OpenCart
 
@@ -304,6 +319,7 @@ class ModelToolExchange1c extends Model {
 				}
 
 				$data['status'] = 1;
+				
 				$this->updateProduct($data, $product_id, $language_id);
 
 				unset($data);
@@ -325,7 +341,7 @@ class ModelToolExchange1c extends Model {
 		return $option_id;
 	}
 
-	private function setOptionValue($option_id,$value){
+	private function setOptionValue($option_id, $value){
 		$lang_id = (int)$this->config->get('config_language_id');
 		$this->db->query("INSERT INTO " . DB_PREFIX . "option_value SET option_id = '" . $option_id . "', image = '', sort_order = '0'");
 		$option_value_id = $this->db->getLastId();
