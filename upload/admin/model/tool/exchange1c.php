@@ -1044,6 +1044,8 @@ class ModelToolExchange1c extends Model {
 			$string = str_replace('--', '-', $string);
 		}
 
+        $string = trim($string, '-');
+
 		return $string;
 	}
 
